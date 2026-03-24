@@ -913,6 +913,8 @@ async function checkPw(){
     sessionStorage.setItem('nba_auth', '1');
     document.getElementById('pwScreen').style.display = 'none';
     document.getElementById('pwInput').value = '';
+    // 認証後にアプリを起動
+    startApp();
   } else {
     const inp = document.getElementById('pwInput');
     const err = document.getElementById('pwErr');
@@ -937,13 +939,7 @@ async function checkPw(){
 })();
 
 // ── 起動 ──
-// DOMは構築済み（scriptが</body>直前）
-(function(){
-  // 認証チェック
-  if(sessionStorage.getItem('nba_auth') !== '1'){
-    document.getElementById('pwInput').focus();
-    return; // 未認証ならアプリを起動しない
-  }
+function startApp(){
   // 静的翻訳をtransCacheに事前ロード
   CHAPTERS.forEach(function(ch, idx){
     const key = 't' + idx;
@@ -957,6 +953,15 @@ async function checkPw(){
   buildChList();
   // ホーム画面を表示
   showHome();
+}
+
+// 起動: 認証済みならすぐ起動、未認証ならパスワード画面を表示
+(function(){
+  if(sessionStorage.getItem('nba_auth') === '1'){
+    startApp();
+  } else {
+    document.getElementById('pwInput').focus();
+  }
 })();
 </script>
 </body>
