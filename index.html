@@ -266,9 +266,59 @@ a{color:var(--tl);text-decoration:none}
 .dt-B{background:rgba(74,222,128,.1);color:var(--gr)}
 .dt-I{background:rgba(251,191,36,.1);color:var(--go)}
 .dt-A{background:rgba(249,115,22,.1);color:var(--or)}
+
+/* ── PASSWORD SCREEN ── */
+#pwScreen{
+  position:fixed;inset:0;background:#080a10;
+  display:flex;align-items:center;justify-content:center;
+  z-index:99999;flex-direction:column;gap:0;
+}
+.pw-box{
+  background:#13161e;border:1px solid #252b3a;border-radius:16px;
+  padding:40px 44px;width:380px;max-width:90vw;text-align:center;
+  box-shadow:0 24px 60px rgba(0,0,0,.6);
+}
+.pw-logo{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;
+  color:#f97316;letter-spacing:2px;margin-bottom:4px}
+.pw-sub{font-size:.75rem;color:#475569;margin-bottom:28px}
+.pw-label{font-size:.72rem;color:#64748b;text-align:left;display:block;margin-bottom:6px}
+.pw-input{
+  width:100%;background:#0d0f15;border:1px solid #252b3a;border-radius:8px;
+  padding:11px 14px;color:#e2e8f0;font-size:.9rem;outline:none;
+  box-sizing:border-box;margin-bottom:10px;transition:border-color .2s;
+  font-family:'Fira Code',monospace;letter-spacing:2px;
+}
+.pw-input:focus{border-color:#f97316}
+.pw-input.error{border-color:#ef4444;animation:shake .3s ease}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.pw-btn{
+  width:100%;padding:12px;border-radius:8px;background:#f97316;border:none;
+  color:#fff;font-weight:700;font-size:.85rem;cursor:pointer;
+  font-family:'Syne',sans-serif;letter-spacing:1px;transition:opacity .15s;margin-top:4px;
+}
+.pw-btn:hover{opacity:.88}
+.pw-err{font-size:.72rem;color:#ef4444;margin-top:8px;min-height:18px}
+.pw-hint{font-size:.65rem;color:#334155;margin-top:18px;line-height:1.6}
+
 </style>
 </head>
 <body>
+
+<div id="pwScreen">
+  <div class="pw-box">
+    <div class="pw-logo">🏀 NBAANALYTIC</div>
+    <div class="pw-sub">日本語テキストブック — 全70章</div>
+    <label class="pw-label">パスワードを入力してください</label>
+    <input class="pw-input" id="pwInput" type="password" placeholder="••••••••"
+      onkeydown="if(event.key==='Enter') checkPw()">
+    <button class="pw-btn" onclick="checkPw()">ログイン →</button>
+    <div class="pw-err" id="pwErr"></div>
+    <div class="pw-hint">
+      アクセスには事前に共有されたパスワードが必要です。
+    </div>
+  </div>
+</div>
+
 <div class="app">
 
 <!-- SIDEBAR -->
@@ -846,9 +896,54 @@ function updateProgress(){ updateProg(); }
 
 // 翻訳は事前に組み込み済み（APIキー不要）
 
+
+// ── PASSWORD AUTH ──
+const PW_HASH = '0b9959f6ffc5e3b6f52bec7e514d738c70f366a7360b9da1cc76e366e3043e24'; // SHA-256 of password
+
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+async function checkPw(){
+  const input = document.getElementById('pwInput').value;
+  const hash = await sha256(input);
+  if(hash === PW_HASH){
+    // 認証成功 → セッションに保存してスクリーンを非表示
+    sessionStorage.setItem('nba_auth', '1');
+    document.getElementById('pwScreen').style.display = 'none';
+    document.getElementById('pwInput').value = '';
+  } else {
+    const inp = document.getElementById('pwInput');
+    const err = document.getElementById('pwErr');
+    inp.classList.add('error');
+    err.textContent = 'パスワードが違います。もう一度お試しください。';
+    setTimeout(()=>inp.classList.remove('error'), 400);
+    inp.value = '';
+    inp.focus();
+  }
+}
+
+// 既に認証済みかチェック
+(function(){
+  if(sessionStorage.getItem('nba_auth') === '1'){
+    document.getElementById('pwScreen').style.display = 'none';
+  } else {
+    // アプリを隠す（パスワード画面だけ見せる）
+    document.addEventListener('DOMContentLoaded', function(){
+      document.getElementById('pwInput').focus();
+    });
+  }
+})();
+
 // ── 起動 ──
 // DOMは構築済み（scriptが</body>直前）
 (function(){
+  // 認証チェック
+  if(sessionStorage.getItem('nba_auth') !== '1'){
+    document.getElementById('pwInput').focus();
+    return; // 未認証ならアプリを起動しない
+  }
   // 静的翻訳をtransCacheに事前ロード
   CHAPTERS.forEach(function(ch, idx){
     const key = 't' + idx;
